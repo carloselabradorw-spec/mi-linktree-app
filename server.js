@@ -6,11 +6,10 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ⚠️ CONFIGURACIÓN CRÍTICA: Procesamiento de datos de formularios
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🛡️ CONFIGURACIÓN DEL CERROJO
+// 🔐 CERROJO DE SEGURIDAD (Activo)
 const seguridadAdmin = basicAuth({
     users: { 'carlos': 'CarlosNFC2026' }, 
     challenge: true, 
@@ -25,27 +24,29 @@ const pool = new Pool({
   }
 });
 
-// Inicializar la tabla en PostgreSQL si no existe
+// Inicializar la tabla en PostgreSQL (Con columna de orden automático)
 const inicializarBaseDatos = async () => {
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS enlaces (
                 id SERIAL PRIMARY KEY,
                 titulo TEXT NOT NULL,
-                url TEXT NOT NULL
+                url TEXT NOT NULL,
+                posicion INTEGER DEFAULT 0
             );
         `);
-        console.log("¡Conexión exitosa! Base de datos lista y conectada.");
+        await pool.query(`ALTER TABLE enlaces ADD COLUMN IF NOT EXISTS posicion INTEGER DEFAULT 0;`);
+        console.log("¡Conexión exitosa! Base de datos lista, ordenada y conectada.");
     } catch (error) {
         console.error("Error al conectar la base de datos:", error);
     }
 };
 inicializarBaseDatos();
 
-// 🟢 RUTA PÚBLICA: Obtener todos los enlaces para pintar los botones
+// 🟢 RUTA PÚBLICA: Obtener todos los enlaces ordenados (Para la tarjeta del cliente)
 app.get('/api/enlaces', async (req, res) => {
     try {
-        const resultado = await pool.query('SELECT * FROM enlaces ORDER BY id ASC');
+        const resultado = await pool.query('SELECT * FROM enlaces ORDER BY posicion ASC, id ASC');
         res.json(resultado.rows);
     } catch (error) {
         console.error("Error al leer enlaces:", error);
@@ -55,11 +56,12 @@ app.get('/api/enlaces', async (req, res) => {
 
 // 🔵 RUTA PROTEGIDA: Añadir un nuevo enlace
 app.post('/api/enlaces', seguridadAdmin, async (req, res) => {
-    const { titulo, url } = req.body;
+    const { titulo, url, posicion } = req.body;
+    const ordenNum = posicion ? parseInt(posicion, 10) : 0;
     if (titulo && url) {
         try {
-            await pool.query('INSERT INTO enlaces (titulo, url) VALUES ($1, $2)', [titulo, url]);
-            console.log(`Enlace añadido correctamente: ${titulo}`);
+            await pool.query('INSERT INTO enlaces (titulo, url, posicion) VALUES ($1, $2, $3)', [titulo, url, ordenNum]);
+            console.log(`Enlace añadido correctamente: ${titulo} en posición ${ordenNum}`);
         } catch (error) {
             console.error("Error al insertar enlace:", error);
         }
@@ -67,37 +69,48 @@ app.post('/api/enlaces', seguridadAdmin, async (req, res) => {
     res.redirect('/admin');
 });
 
-// 🔴 RUTA PROTEGIDA: Eliminar un enlace por su ID
+// 🟡 RUTA PROTEGIDA: Guardar las nuevas posiciones al usar las flechas
+app.post('/api/ordenar-enlaces', seguridadAdmin, async (req, res) => {
+    const { posiciones } = req.body;
+    try {
+        if (posiciones && typeof posiciones === 'object') {
+            for (const [id, pos] of Object.entries(posiciones)) {
+                await pool.query('UPDATE enlaces SET posicion = $1 WHERE id = $2', [parseInt(pos, 10), parseInt(id, 10)]);
+            }
+            return res.json({ success: true });
+        }
+        res.status(400).json({ error: "Datos inválidos" });
+    } catch (error) {
+        console.error("Error al actualizar posiciones:", error);
+        res.status(500).json({ error: "Error interno" });
+    }
+});
+
+// 🔴 RUTA PROTEGIDA: Eliminar un enlace
 app.post('/api/eliminar-enlace', seguridadAdmin, async (req, res) => {
     const idEnlace = req.body.id ? parseInt(req.body.id, 10) : null;
-    
-    console.log("--> Intentando borrar el ID de la base de datos:", idEnlace);
-
     if (idEnlace && !isNaN(idEnlace)) {
         try {
-            const respuestaBorrado = await pool.query('DELETE FROM enlaces WHERE id = $1', [idEnlace]);
-            console.log(`Resultado del borrado: Se eliminaron ${respuestaBorrado.rowCount} filas.`);
+            await pool.query('DELETE FROM enlaces WHERE id = $1', [idEnlace]);
+            console.log(`ID ${idEnlace} eliminado.`);
         } catch (error) {
             console.error("Error crítico en la consulta de borrado:", error);
         }
-    } else {
-        console.log("Advertencia: El servidor recibió un ID vacío o inválido:", req.body.id);
     }
-
     res.redirect('/admin');
 });
 
-// 🖥️ RUTA PROTEGIDA: Mostrar el panel (Ahora sí pasará por el cerrojo primero)
+// 🖥️ RUTA PROTEGIDA: Mostrar el panel de control
 app.get('/admin', seguridadAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// 📱 RUTA PÚBLICA: Mostrar la tarjeta cliente al escanear el NFC
+// 📱 RUTA PÚBLICA: Vista NFC libre para los clientes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 📁 ARCHIVOS ESTÁTICOS AL FINAL: Así no interfieren con las rutas protegidas
+// Archivos estáticos al final para que no rompan el candado
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => {
