@@ -12,16 +12,23 @@
         .card-formulario { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 30px; border: 1px solid #eaeaea; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px; }
-        input[type="text"], input[type="url"] { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #333; }
+        input[type="text"], input[type="url"], input[type="number"] { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #333; }
         
         .btn-anadir { width: 100%; background: #000; color: #fff; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-anadir:hover { background: #222; }
         
         .lista-container { display: flex; flex-direction: column; gap: 14px; }
         .enlace-item { background: #fff; padding: 16px 20px; border-radius: 12px; border: 1px solid #eaeaea; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        
+        .izquierda-item { display: flex; align-items: center; gap: 15px; }
+        .controles-orden { display: flex; flex-direction: column; gap: 2px; }
+        .btn-orden { background: #eee; border: none; border-radius: 4px; cursor: pointer; padding: 4px 8px; font-size: 12px; }
+        .btn-orden:hover { background: #ddd; }
+        
         .enlace-info { font-weight: 700; font-size: 16px; color: #111; }
         
-        .btn-borrar { background: #ff4d4d; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .derecha-item { display: flex; align-items: center; }
+        .btn-borrar { background: #ff4d4d; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
         .btn-borrar:hover { background: #e03333; }
         
         .footer-link { display: block; text-align: center; margin-top: 40px; color: #666; text-decoration: none; font-size: 14px; }
@@ -39,47 +46,92 @@
                 <input type="text" id="titulo" name="titulo" placeholder="Ej: Mi Instagram" required>
             </div>
             <div class="form-group">
-                <label for="url">Enlace (URL):</label>
+                <label for="url">Enlace (URL / tel: / mailto:):</label>
                 <input type="url" id="url" name="url" placeholder="Ej: https://instagram.com/..." required>
             </div>
+            <input type="hidden" id="posicion" name="posicion" value="0">
             <button type="submit" class="btn-anadir">Añadir Enlace al NFC ➕</button>
         </form>
     </div>
 
-    <h2>Tus enlaces activos actuales:</h2>
+    <h2>Tus enlaces activos actuales (Usa 🔼 o 🔽 para ordenar):</h2>
     <div id="lista-enlaces" class="lista-container"></div>
 
     <a href="/" class="footer-link">← Ver vista del cliente (NFC)</a>
 
     <script>
-        // Cargar los enlaces en tiempo real desde PostgreSQL
-        fetch('/api/enlaces')
-            .then(res => res.json())
-            .then(enlaces => {
-                const lista = document.getElementById('lista-enlaces');
-                lista.innerHTML = '';
-                
-                if(enlaces.length === 0) {
-                    lista.innerHTML = '<p style="text-align:center; color: #666; font-size: 14px;">No hay enlaces activos. ¡Añade el primero arriba!</p>';
-                    return;
-                }
+        let listaEnlacesMemoria = [];
 
-                enlaces.forEach(enlace => {
-                    const item = document.createElement('div');
-                    item.className = 'enlace-item';
-                    
-                    // Aquí metemos la estructura exacta asegurando que el botón REAlMENTE envíe el formulario
-                    item.innerHTML = `
+        function cargarEnlaces() {
+            fetch('/api/enlaces')
+                .then(res => res.json())
+                .then(enlaces => {
+                    listaEnlacesMemoria = enlaces;
+                    renderizarLista();
+                })
+                .catch(err => console.error("Error al cargar los botones:", err));
+        }
+
+        function renderizarLista() {
+            const lista = document.getElementById('lista-enlaces');
+            lista.innerHTML = '';
+            
+            if(listaEnlacesMemoria.length === 0) {
+                lista.innerHTML = '<p style="text-align:center; color: #666; font-size: 14px;">No hay enlaces activos.</p>';
+                return;
+            }
+
+            listaEnlacesMemoria.forEach((enlace, index) => {
+                const item = document.createElement('div');
+                item.className = 'enlace-item';
+                
+                item.innerHTML = `
+                    <div class="izquierda-item">
+                        <div class="controles-orden">
+                            <button class="btn-orden" onclick="moverEnlace(${index}, -1)">🔼</button>
+                            <button class="btn-orden" onclick="moverEnlace(${index}, 1)">🔽</button>
+                        </div>
                         <div class="enlace-info">${enlace.titulo}</div>
+                    </div>
+                    <div class="derecha-item">
                         <form action="/api/eliminar-enlace" method="POST" style="margin:0;">
                             <input type="hidden" name="id" value="${enlace.id}">
                             <button type="submit" class="btn-borrar">Eliminar 🗑️</button>
                         </form>
-                    `;
-                    lista.appendChild(item);
-                });
-            })
-            .catch(err => console.error("Error al cargar los botones:", err));
+                    </div>
+                `;
+                lista.appendChild(item);
+            });
+        }
+
+        function moverEnlace(index, direccion) {
+            const nuevoIndex = index + direccion;
+            if (nuevoIndex < 0 || nuevoIndex >= listaEnlacesMemoria.length) return; // Fuera de límites
+
+            // Intercambiar elementos en el array de memoria
+            const temp = listaEnlacesMemoria[index];
+            listaEnlacesMemoria[index] = listaEnlacesMemoria[nuevoIndex];
+            listaEnlacesMemoria[nuevoIndex] = temp;
+
+            // Pintar inmediatamente en pantalla
+            renderizarLista();
+
+            // Preparar el mapa de posiciones para mandarlo al servidor PostgreSQL
+            const posiciones Envio = {};
+            listaEnlacesMemoria.forEach((enlace, i) => {
+                posicionesEnvio[enlace.id] = i;
+            });
+
+            // Guardar el nuevo orden de forma permanente en internet
+            fetch('/api/ordenar-enlaces', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ posiciones: posicionesEnvio })
+            }).catch(err => console.error("Error al guardar el nuevo orden:", err));
+        }
+
+        // Cargar al iniciar la página
+        cargarEnlaces();
     </script>
 </body>
 </html>
