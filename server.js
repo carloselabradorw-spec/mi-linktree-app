@@ -10,14 +10,14 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔐 CERROJO DE SEGURIDAD (Totalmente Activo)
+// 🔐 CERROJO DE SEGURIDAD (Activo y obligatorio)
 const seguridadAdmin = basicAuth({
     users: { 'carlos': 'CarlosNFC2026' }, 
     challenge: true, 
     realm: 'Panel Privado'
 });
 
-// 📁 CARPETA PÚBLICA (Solo para la vista del cliente index.html)
+// 📁 CARPETA PÚBLICA: Solo para index.html (Vista del cliente)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 🔌 Conexión con tu Base de Datos de Render
@@ -40,27 +40,26 @@ const inicializarBaseDatos = async () => {
             );
         `);
         await pool.query(`ALTER TABLE enlaces ADD COLUMN IF NOT EXISTS posicion INTEGER DEFAULT 0;`);
-        console.log("¡Base de datos conectada correctamente!");
+        console.log("¡Base de datos lista!");
     } catch (error) {
         console.error("Error en base de datos:", error);
     }
 };
 inicializarBaseDatos();
 
-// 🟢 RUTA PÚBLICA: Obtener enlaces ordenados
+// 🟢 RUTA PÚBLICA: Obtener enlaces para pintar los botones
 app.get('/api/enlaces', async (req, res) => {
     try {
         const resultado = await pool.query('SELECT * FROM enlaces ORDER BY posicion ASC, id ASC');
         res.json(resultado.rows);
     } catch (error) {
         console.error("Error al leer enlaces:", error);
-        res.status(500).json({ error: "Error" });
+        res.status(500).json({ error: "Error de servidor" });
     }
 });
 
-// 🖥️ RUTA PROTEGIDA: Panel de control (Ruta infalible para Linux/Render)
+// 🖥️ RUTA PROTEGIDA: Mostrar el panel de control
 app.get('/admin', seguridadAdmin, (req, res) => {
-    // Buscamos directamente el archivo en la raíz del proyecto
     res.sendFile(path.resolve(__dirname, 'admin.html'));
 });
 
@@ -72,7 +71,7 @@ app.post('/api/enlaces', seguridadAdmin, async (req, res) => {
         try {
             await pool.query('INSERT INTO enlaces (titulo, url, posicion) VALUES ($1, $2, $3)', [titulo, url, ordenNum]);
         } catch (error) {
-            console.error(error);
+            console.error("Error al insertar:", error);
         }
     }
     res.redirect('/admin');
@@ -90,6 +89,7 @@ app.post('/api/ordenar-enlaces', seguridadAdmin, async (req, res) => {
         }
         res.status(400).json({ error: "Datos inválidos" });
     } catch (error) {
+        console.error("Error al ordenar:", error);
         res.status(500).json({ error: "Error interno" });
     }
 });
@@ -101,13 +101,13 @@ app.post('/api/eliminar-enlace', seguridadAdmin, async (req, res) => {
         try {
             await pool.query('DELETE FROM enlaces WHERE id = $1', [idEnlace]);
         } catch (error) {
-            console.error(error);
+            console.error("Error al eliminar:", error);
         }
     }
     res.redirect('/admin');
 });
 
-// 📱 RUTA PÚBLICA: Vista raíz para la tarjeta
+// 📱 RUTA PÚBLICA: Vista raíz cliente
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
