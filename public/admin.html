@@ -77,7 +77,7 @@
             lista.innerHTML = '';
             
             if(listaEnlacesMemoria.length === 0) {
-                lista.innerHTML = '<p style="text-align:center; color: #666; font-size: 14px;">No hay enlaces activos.</p>';
+                lista.innerHTML = '<p style="text-align:center; color: #666; font-size: 14px;">No hay enlaces activos. ¡Añade el primero arriba!</p>';
                 return;
             }
 
@@ -106,31 +106,26 @@
 
         function moverEnlace(index, direccion) {
             const nuevoIndex = index + direccion;
-            if (nuevoIndex < 0 || nuevoIndex >= listaEnlacesMemoria.length) return; // Fuera de límites
+            if (nuevoIndex < 0 || nuevoIndex >= listaEnlacesMemoria.length) return;
 
-            // Intercambiar elementos en el array de memoria
             const temp = listaEnlacesMemoria[index];
             listaEnlacesMemoria[index] = listaEnlacesMemoria[nuevoIndex];
             listaEnlacesMemoria[nuevoIndex] = temp;
 
-            // Pintar inmediatamente en pantalla
             renderizarLista();
 
-            // Preparar el mapa de posiciones para mandarlo al servidor PostgreSQL
-            const posiciones Envio = {};
+            const posicionesEnvio = {};
             listaEnlacesMemoria.forEach((enlace, i) => {
                 posicionesEnvio[enlace.id] = i;
             });
 
-            // Guardar el nuevo orden de forma permanente en internet
             fetch('/api/ordenar-enlaces', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ posiciones: posicionesEnvio })
-            }).catch(err => console.error("Error al guardar el nuevo orden:", err));
+            }).catch(err => console.error("Error al guardar el orden:", err));
         }
 
-        // Cargar al iniciar la página
         cargarEnlaces();
     </script>
 </body>
