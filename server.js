@@ -1,23 +1,27 @@
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+const basicAuth = require('express-basic-auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ⚠️ CONFIGURACIÓN CRÍTICA: Procesamiento de datos de formularios
-// Esto debe ir arriba del todo, antes de las rutas, para que funcione el borrado.
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir los archivos de la carpeta pública
-app.use(express.static(path.join(__dirname, 'public')));
+// 🛡️ CONFIGURACIÓN DEL CERROJO
+const seguridadAdmin = basicAuth({
+    users: { 'carlos': 'CarlosNFC2026' }, 
+    challenge: true, 
+    realm: 'Panel Privado'
+});
 
-// 🔌 Conexión con tu Base de Datos de Render (URL EXTERNA INTEGRADA)
+// 🔌 Conexión con tu Base de Datos de Render (URL EXTERNA)
 const pool = new Pool({
   connectionString: "postgresql://base_enlaces_user:p7i7iboiGd3X1HHuRGTNukKABLPrOrJP@dpg-d8il6fuq1p3s73eroev0-a.frankfurt-postgres.render.com/base_enlaces",
   ssl: {
-    rejectUnauthorized: false // Requerido para conectar desde fuera de Render (tu ordenador)
+    rejectUnauthorized: false 
   }
 });
 
@@ -38,7 +42,7 @@ const inicializarBaseDatos = async () => {
 };
 inicializarBaseDatos();
 
-// 🟢 RUTA: Obtener todos los enlaces (Ordenados por ID)
+// 🟢 RUTA PÚBLICA: Obtener todos los enlaces para pintar los botones
 app.get('/api/enlaces', async (req, res) => {
     try {
         const resultado = await pool.query('SELECT * FROM enlaces ORDER BY id ASC');
@@ -49,8 +53,8 @@ app.get('/api/enlaces', async (req, res) => {
     }
 });
 
-// 🔵 RUTA: Añadir un nuevo enlace
-app.post('/api/enlaces', async (req, res) => {
+// 🔵 RUTA PROTEGIDA: Añadir un nuevo enlace
+app.post('/api/enlaces', seguridadAdmin, async (req, res) => {
     const { titulo, url } = req.body;
     if (titulo && url) {
         try {
@@ -63,9 +67,8 @@ app.post('/api/enlaces', async (req, res) => {
     res.redirect('/admin');
 });
 
-// 🔴 RUTA: Eliminar un enlace por su ID (REVISADA)
-app.post('/api/eliminar-enlace', async (req, res) => {
-    // Forzamos a que lea el id enviado desde el formulario de admin.html
+// 🔴 RUTA PROTEGIDA: Eliminar un enlace por su ID
+app.post('/api/eliminar-enlace', seguridadAdmin, async (req, res) => {
     const idEnlace = req.body.id ? parseInt(req.body.id, 10) : null;
     
     console.log("--> Intentando borrar el ID de la base de datos:", idEnlace);
@@ -84,14 +87,18 @@ app.post('/api/eliminar-enlace', async (req, res) => {
     res.redirect('/admin');
 });
 
-// Rutas para mostrar las pantallas
-app.get('/admin', (req, res) => {
+// 🖥️ RUTA PROTEGIDA: Mostrar el panel (Ahora sí pasará por el cerrojo primero)
+app.get('/admin', seguridadAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// 📱 RUTA PÚBLICA: Mostrar la tarjeta cliente al escanear el NFC
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// 📁 ARCHIVOS ESTÁTICOS AL FINAL: Así no interfieren con las rutas protegidas
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en el puerto ${PORT}`);
