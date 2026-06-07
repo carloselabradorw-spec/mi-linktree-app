@@ -3,76 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administración - Linktree</title>
+    <title>Panel de Control Privado</title>
     <style>
-        body { background: #f4f4f6; color: #111111; font-family: sans-serif; display: flex; justify-content: center; padding: 40px 20px; }
-        .container { width: 100%; max-width: 500px; text-align: center; }
-        h1 { font-size: 22px; margin-bottom: 30px; }
-        .form-container { background: #ffffff; padding: 20px; border: 1px solid #e1e1e6; border-radius: 12px; margin-bottom: 30px; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #cccccc; border-radius: 6px; box-sizing: border-box; }
-        .submit-btn { width: 100%; background: #000000; color: white; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .submit-btn:hover { background: #222222; }
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f5f6f8; color: #111; }
+        h1 { text-align: center; font-size: 24px; margin-bottom: 30px; font-weight: 700; }
+        h2 { text-align: center; font-size: 18px; margin-top: 40px; font-weight: 700; margin-bottom: 20px; }
         
-        /* Estilos para la lista de gestión */
-        .admin-links-list { display: flex; flex-direction: column; gap: 10px; text-align: left; margin-top: 20px; }
-        .admin-link-item { background: white; padding: 12px 16px; border-radius: 8px; border: 1px solid #e1e1e6; display: flex; justify-content: space-between; align-items: center; }
-        .link-info { font-weight: 600; font-size: 14px; }
-        .delete-btn { background: #ff3b30; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
-        .delete-btn:hover { background: #cc2d24; }
-
-        .back-btn { display: inline-block; margin-top: 30px; color: #666666; text-decoration: none; font-size: 14px; }
-        .back-btn:hover { color: #000000; }
+        .card-formulario { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 30px; border: 1px solid #eaeaea; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px; }
+        input[type="text"], input[type="url"] { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #333; }
+        
+        .btn-anadir { width: 100%; background: #000; color: #fff; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-anadir:hover { background: #222; }
+        
+        .lista-container { display: flex; flex-direction: column; gap: 14px; }
+        .enlace-item { background: #fff; padding: 16px 20px; border-radius: 12px; border: 1px solid #eaeaea; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .enlace-info { font-weight: 700; font-size: 16px; color: #111; }
+        
+        .btn-borrar { background: #ff4d4d; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .btn-borrar:hover { background: #e03333; }
+        
+        .footer-link { display: block; text-align: center; margin-top: 40px; color: #666; text-decoration: none; font-size: 14px; }
+        .footer-link:hover { color: #000; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>⚙️ Panel de Control Privado</h1>
-        
-        <div class="form-container">
-            <form action="/api/enlaces" method="POST">
-                <div class="form-group">
-                    <label>Título del Botón:</label>
-                    <input type="text" name="titulo" placeholder="Ej: Mi Instagram" required>
-                </div>
-                <div class="form-group">
-                    <label>Enlace (URL):</label>
-                    <input type="url" name="url" placeholder="Ej: https://instagram.com/..." required>
-                </div>
-                <button type="submit" class="submit-btn">Añadir Enlace al NFC ➕</button>
-            </form>
-        </div>
-
-        <h3>Tus enlaces activos actuales:</h3>
-        <div id="lista-gestion-enlaces" class="admin-links-list"></div>
-
-        <a href="/" class="back-btn">← Ver vista del cliente (NFC)</a>
+    <h1>⚙️ Panel de Control Privado</h1>
+    
+    <div class="card-formulario">
+        <form action="/api/enlaces" method="POST">
+            <div class="form-group">
+                <label for="titulo">Título del Botón:</label>
+                <input type="text" id="titulo" name="titulo" placeholder="Ej: Mi Instagram" required>
+            </div>
+            <div class="form-group">
+                <label for="url">Enlace (URL):</label>
+                <input type="url" id="url" name="url" placeholder="Ej: https://instagram.com/..." required>
+            </div>
+            <button type="submit" class="btn-anadir">Añadir Enlace al NFC ➕</button>
+        </form>
     </div>
 
+    <h2>Tus enlaces activos actuales:</h2>
+    <div id="lista-enlaces" class="lista-container"></div>
+
+    <a href="/" class="footer-link">← Ver vista del cliente (NFC)</a>
+
     <script>
-        // Pedimos los enlaces actuales para dibujar la lista con sus botones de borrado
+        // Cargar los enlaces en tiempo real desde PostgreSQL
         fetch('/api/enlaces')
-            .then(respuesta => respuesta.json())
+            .then(res => res.json())
             .then(enlaces => {
-                const lista = document.getElementById('lista-gestion-enlaces');
+                const lista = document.getElementById('lista-enlaces');
+                lista.innerHTML = '';
                 
-                enlaces.forEach((enlace, index) => {
+                if(enlaces.length === 0) {
+                    lista.innerHTML = '<p style="text-align:center; color: #666; font-size: 14px;">No hay enlaces activos. ¡Añade el primero arriba!</p>';
+                    return;
+                }
+
+                enlaces.forEach(enlace => {
                     const item = document.createElement('div');
-                    item.className = 'admin-link-item';
+                    item.className = 'enlace-item';
                     
-                    // Metemos un mini-formulario invisible por cada botón para poder enviar el ID al servidor al hacer clic
+                    // Aquí metemos la estructura exacta asegurando que el botón REAlMENTE envíe el formulario
                     item.innerHTML = `
-                        <span class="link-info">${enlace.titulo}</span>
+                        <div class="enlace-info">${enlace.titulo}</div>
                         <form action="/api/eliminar-enlace" method="POST" style="margin:0;">
-                            <input type="hidden" name="id" value="${index}">
-                            <button type="submit" class="delete-btn">Eliminar 🗑️</button>
+                            <input type="hidden" name="id" value="${enlace.id}">
+                            <button type="submit" class="btn-borrar">Eliminar 🗑️</button>
                         </form>
                     `;
                     lista.appendChild(item);
                 });
-            });
+            })
+            .catch(err => console.error("Error al cargar los botones:", err));
     </script>
 </body>
 </html>
