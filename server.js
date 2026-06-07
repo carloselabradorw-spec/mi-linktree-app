@@ -6,17 +6,21 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Procesamiento de datos de formularios
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔐 CERROJO DE SEGURIDAD (Activo)
+// 🔐 CERROJO DE SEGURIDAD (Totalmente Activo)
 const seguridadAdmin = basicAuth({
     users: { 'carlos': 'CarlosNFC2026' }, 
     challenge: true, 
     realm: 'Panel Privado'
 });
 
-// 🔌 Conexión con tu Base de Datos de Render (URL EXTERNA)
+// 📁 CARPETA PÚBLICA (Solo para la vista del cliente index.html)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 🔌 Conexión con tu Base de Datos de Render
 const pool = new Pool({
   connectionString: "postgresql://base_enlaces_user:p7i7iboiGd3X1HHuRGTNukKABLPrOrJP@dpg-d8il6fuq1p3s73eroev0-a.frankfurt-postgres.render.com/base_enlaces",
   ssl: {
@@ -24,7 +28,7 @@ const pool = new Pool({
   }
 });
 
-// Inicializar la tabla en PostgreSQL (Con columna de orden automático)
+// Inicializar la tabla en PostgreSQL
 const inicializarBaseDatos = async () => {
     try {
         await pool.query(`
@@ -36,40 +40,45 @@ const inicializarBaseDatos = async () => {
             );
         `);
         await pool.query(`ALTER TABLE enlaces ADD COLUMN IF NOT EXISTS posicion INTEGER DEFAULT 0;`);
-        console.log("¡Conexión exitosa! Base de datos lista, ordenada y conectada.");
+        console.log("¡Base de datos conectada correctamente!");
     } catch (error) {
-        console.error("Error al conectar la base de datos:", error);
+        console.error("Error en base de datos:", error);
     }
 };
 inicializarBaseDatos();
 
-// 🟢 RUTA PÚBLICA: Obtener todos los enlaces ordenados (Para la tarjeta del cliente)
+// 🟢 RUTA PÚBLICA: Obtener enlaces ordenados
 app.get('/api/enlaces', async (req, res) => {
     try {
         const resultado = await pool.query('SELECT * FROM enlaces ORDER BY posicion ASC, id ASC');
         res.json(resultado.rows);
     } catch (error) {
         console.error("Error al leer enlaces:", error);
-        res.status(500).json({ error: "Error de servidor al leer los datos" });
+        res.status(500).json({ error: "Error" });
     }
 });
 
-// 🔵 RUTA PROTEGIDA: Añadir un nuevo enlace
+// 🖥️ RUTA PROTEGIDA: Panel de control (Ruta infalible para Linux/Render)
+app.get('/admin', seguridadAdmin, (req, res) => {
+    // Buscamos directamente el archivo en la raíz del proyecto
+    res.sendFile(path.resolve(__dirname, 'admin.html'));
+});
+
+// 🔵 RUTA PROTEGIDA: Añadir enlace
 app.post('/api/enlaces', seguridadAdmin, async (req, res) => {
     const { titulo, url, posicion } = req.body;
     const ordenNum = posicion ? parseInt(posicion, 10) : 0;
     if (titulo && url) {
         try {
             await pool.query('INSERT INTO enlaces (titulo, url, posicion) VALUES ($1, $2, $3)', [titulo, url, ordenNum]);
-            console.log(`Enlace añadido correctamente: ${titulo} en posición ${ordenNum}`);
         } catch (error) {
-            console.error("Error al insertar enlace:", error);
+            console.error(error);
         }
     }
     res.redirect('/admin');
 });
 
-// 🟡 RUTA PROTEGIDA: Guardar las nuevas posiciones al usar las flechas
+// 🟡 RUTA PROTEGIDA: Guardar orden de las flechas
 app.post('/api/ordenar-enlaces', seguridadAdmin, async (req, res) => {
     const { posiciones } = req.body;
     try {
@@ -81,7 +90,6 @@ app.post('/api/ordenar-enlaces', seguridadAdmin, async (req, res) => {
         }
         res.status(400).json({ error: "Datos inválidos" });
     } catch (error) {
-        console.error("Error al actualizar posiciones:", error);
         res.status(500).json({ error: "Error interno" });
     }
 });
@@ -92,27 +100,18 @@ app.post('/api/eliminar-enlace', seguridadAdmin, async (req, res) => {
     if (idEnlace && !isNaN(idEnlace)) {
         try {
             await pool.query('DELETE FROM enlaces WHERE id = $1', [idEnlace]);
-            console.log(`ID ${idEnlace} eliminado.`);
         } catch (error) {
-            console.error("Error crítico en la consulta de borrado:", error);
+            console.error(error);
         }
     }
     res.redirect('/admin');
 });
 
-// 🖥️ RUTA PROTEGIDA: Mostrar el panel de control
-app.get('/admin', seguridadAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// 📱 RUTA PÚBLICA: Vista NFC libre para los clientes
+// 📱 RUTA PÚBLICA: Vista raíz para la tarjeta
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Archivos estáticos al final para que no rompan el candado
-app.use(express.static(path.join(__dirname, 'public')));
-
 app.listen(PORT, () => {
-    console.log(`Servidor escuchando en el puerto ${PORT}`);
+    console.log(`Servidor corriendo en puerto ${PORT}`);
 });
