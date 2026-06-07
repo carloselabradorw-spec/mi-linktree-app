@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // 🔌 Conexión con tu Base de Datos PostgreSQL de Render
 const pool = new Pool({
-  connectionString: "postgresql://base_enlaces_user:p7i7iboiGd3X1HHuRGTNukKABLPrOrJP@dpg-d8il6fuq1p3s73eroev0-a/base_enlaces",
+  connectionString: "postgresql://base_enlaces_user:p7i7iboiGd3X1HHuRGTNukKABLPrOrJP@dpg-d8il6fuq1p3s73eroev0-a.frankfurt-postgres.render.com/base_enlaces",
   ssl: {
     rejectUnauthorized: false
   }
