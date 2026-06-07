@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carlos Labrador - Enlaces</title>
+    <style>
+        body { background: #ffffff; color: #111111; font-family: sans-serif; display: flex; justify-content: center; padding: 60px 20px; }
+        .container { width: 100%; max-width: 450px; text-align: center; }
+        
+        /* Estilo para tu foto de perfil de marca */
+        .profile-img { width: 96px; height: 96px; background: #e1e1e6; border-radius: 50%; margin: 0 auto 16px auto; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; color: #666666; }
+        
+        h1 { font-size: 20px; font-weight: 700; margin: 0 0 8px 0; }
+        .bio { font-size: 14px; color: #666666; margin-bottom: 32px; }
+        
+        .links-container { display: flex; flex-direction: column; gap: 16px; }
+        .link-btn { display: block; color: #111111; text-decoration: none; padding: 18px; border: 1.5px solid #111111; border-radius: 30px; font-weight: 600; font-size: 15px; transition: all 0.2s ease; text-align: center; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .link-btn:hover { background: #111111; color: #ffffff; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="profile-img">C</div>
+        
+        <h1>Carlos Labrador</h1>
+        <p class="bio">Bienvenidos a mi espacio digital. Conecta conmigo a través de mis redes.</p>
+        
+        <div id="contenedor-enlaces" class="links-container"></div>
+    </div>
+
+    <script>
+        // Sigue pidiendo los datos al servidor exactamente igual
+        fetch('/api/enlaces')
+            .then(respuesta => respuesta.json())
+            .then(enlaces => {
+                const contenedor = document.getElementById('contenedor-enlaces');
+                enlaces.forEach(enlace => {
+                    const boton = document.createElement('a');
+                    boton.href = enlace.url;
+                    boton.className = 'link-btn';
+                    boton.textContent = enlace.titulo;
+                    boton.target = '_blank';
+                    contenedor.appendChild(boton);
+                });
+            });
+    </script>
+</body>
+</html>
