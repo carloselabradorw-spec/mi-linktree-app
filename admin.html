@@ -5,88 +5,140 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Control Privado</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f5f6f8; color: #111; }
+        body { font-family: sans-serif; max-width: 680px; margin: 40px auto; padding: 20px; background: #f5f6f8; color: #111; }
         h1 { text-align: center; font-size: 24px; margin-bottom: 30px; font-weight: 700; }
         h2 { text-align: center; font-size: 18px; margin-top: 40px; font-weight: 700; margin-bottom: 20px; }
-        
         .card-formulario { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 20px; border: 1px solid #eaeaea; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px; }
-        input[type="text"], input[type="url"], input[type="file"] { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #333; }
-        
-        .btn-anadir { width: 100%; background: #000; color: #fff; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-anadir:hover { background: #222; }
-        
-        .seccion-perfil { display: flex; align-items: center; gap: 20px; margin-top: 15px; }
+        input[type="text"], input[type="url"], input[type="file"], textarea { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #333; }
+        textarea { min-height: 90px; resize: vertical; font-family: inherit; }
+        .btn-anadir, .btn-guardar { width: 100%; background: #000; color: #fff; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-anadir:hover, .btn-guardar:hover { background: #222; }
+        .seccion-perfil { display: flex; align-items: center; gap: 20px; margin-top: 15px; flex-wrap: wrap; }
         .preview-foto { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; background: #ddd; border: 2px solid #ccc; }
         .btn-quitar { background: #ff4d4d; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-quitar:hover { background: #e03333; }
-
+        .btn-subir { background: #007bff; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .lista-container { display: flex; flex-direction: column; gap: 14px; }
-        .enlace-item { background: #fff; padding: 16px 20px; border-radius: 12px; border: 1px solid #eaeaea; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-        .izquierda-item { display: flex; align-items: center; gap: 15px; }
+        .enlace-item { background: #fff; padding: 16px 20px; border-radius: 12px; border: 1px solid #eaeaea; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); gap: 16px; }
+        .izquierda-item { display: flex; align-items: center; gap: 15px; min-width: 0; }
         .controles-orden { display: flex; flex-direction: column; gap: 2px; }
         .btn-orden { background: #eee; border: none; border-radius: 4px; cursor: pointer; padding: 4px 8px; font-size: 12px; }
         .btn-orden:hover { background: #ddd; }
-        .enlace-info { font-weight: 700; font-size: 16px; color: #111; }
+        .enlace-info { font-weight: 700; font-size: 16px; color: #111; word-break: break-word; }
         .btn-borrar { background: #ff4d4d; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
-        
         .footer-link { display: block; text-align: center; margin-top: 40px; color: #666; text-decoration: none; font-size: 14px; }
+        .link-publico { text-align: center; font-size: 14px; margin-top: -10px; margin-bottom: 20px; color: #555; }
+        .link-publico a { color: #111; font-weight: 700; }
     </style>
 </head>
 <body>
 
-    <h1>⚙️ Panel de Control Privado</h1>
-    
+    <h1>Panel de Control Privado</h1>
+    <p class="link-publico">Tu pagina publica: <a id="enlace-publico" href="/" target="_blank">abrir</a></p>
+
     <div class="card-formulario">
-        <form action="/api/enlaces" method="POST">
+        <form action="/api/admin/perfil" method="POST">
             <div class="form-group">
-                <label for="titulo">Título del Botón:</label>
-                <input type="text" id="titulo" name="titulo" placeholder="Ej: Mi Instagram" required>
+                <label for="nombre_publico">Nombre que vera la gente:</label>
+                <input type="text" id="nombre_publico" name="nombre_publico" placeholder="Ej: Carlos Labrador" required>
             </div>
             <div class="form-group">
-                <label for="url">Enlace (URL / tel: / mailto:):</label>
-                <input type="url" id="url" name="url" placeholder="Ej: https://instagram.com/..." required>
+                <label for="descripcion">Descripcion corta:</label>
+                <textarea id="descripcion" name="descripcion" placeholder="Ej: Conecta conmigo a traves de mis redes."></textarea>
             </div>
-            <input type="hidden" id="posicion" name="posicion" value="0">
-            <button type="submit" class="btn-anadir">Añadir Enlace al NFC ➕</button>
+            <button type="submit" class="btn-guardar">Guardar perfil</button>
         </form>
     </div>
 
     <div class="card-formulario">
-        <label>Modificar Imagen de Perfil:</label>
+        <form action="/api/enlaces" method="POST">
+            <div class="form-group">
+                <label for="titulo">Titulo del boton:</label>
+                <input type="text" id="titulo" name="titulo" placeholder="Ej: Mi Instagram" required>
+            </div>
+            <div class="form-group">
+                <label for="url">Enlace:</label>
+                <input type="text" id="url" name="url" placeholder="Ej: https://instagram.com/... o tel:+34123456789" required>
+            </div>
+            <input type="hidden" id="posicion" name="posicion" value="0">
+            <button type="submit" class="btn-anadir">Anadir enlace</button>
+        </form>
+    </div>
+
+    <div class="card-formulario">
+        <label>Modificar imagen de perfil:</label>
         <div class="seccion-perfil">
             <img id="vista-previa" src="" alt="Perfil" class="preview-foto" style="display: none;">
             <div id="sin-foto" style="font-size: 14px; color: #666;">Sin foto de perfil actual</div>
-            
-            <form action="/api/perfil/subir" method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; flex-grow: 1;">
-                <input type="file" name="imagenPerfil" accept="image/*" required style="padding: 8px;">
-                <button type="submit" style="background: #007bff; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">Subir 💾</button>
+
+            <form action="/api/perfil/subir" method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; flex-grow: 1; flex-wrap: wrap;">
+                <input type="file" name="imagenPerfil" accept="image/*" required style="padding: 8px; flex: 1; min-width: 180px;">
+                <button type="submit" class="btn-subir">Subir</button>
             </form>
 
             <form action="/api/perfil/eliminar" method="POST" id="form-eliminar-foto" style="display: none;">
-                <button type="submit" class="btn-quitar">Quitar 🗑️</button>
+                <button type="submit" class="btn-quitar">Quitar</button>
             </form>
         </div>
+    </div>
+
+    <div class="card-formulario">
+        <h2 style="margin-top: 0;">Crear otro usuario</h2>
+        <form action="/api/admin/usuarios" method="POST">
+            <div class="form-group">
+                <label for="nuevo_username">Usuario para entrar:</label>
+                <input type="text" id="nuevo_username" name="username" placeholder="Ej: ana" required>
+            </div>
+            <div class="form-group">
+                <label for="nuevo_password">Contrasena:</label>
+                <input type="text" id="nuevo_password" name="password" placeholder="Usa una contrasena larga" required>
+            </div>
+            <div class="form-group">
+                <label for="nuevo_slug">Direccion publica:</label>
+                <input type="text" id="nuevo_slug" name="slug" placeholder="Ej: ana">
+            </div>
+            <div class="form-group">
+                <label for="nuevo_nombre">Nombre publico:</label>
+                <input type="text" id="nuevo_nombre" name="nombre_publico" placeholder="Ej: Ana Lopez" required>
+            </div>
+            <div class="form-group">
+                <label for="nuevo_descripcion">Descripcion:</label>
+                <textarea id="nuevo_descripcion" name="descripcion" placeholder="Ej: Mis redes y contacto."></textarea>
+            </div>
+            <button type="submit" class="btn-guardar">Crear usuario</button>
+        </form>
     </div>
 
     <h2>Tus enlaces activos actuales:</h2>
     <div id="lista-enlaces" class="lista-container"></div>
 
-    <a href="/" class="footer-link">← Ver vista del cliente (NFC)</a>
+    <a href="/" class="footer-link">Ver vista principal</a>
 
     <script>
         let listaEnlacesMemoria = [];
 
-        function comprobarPerfil() {
-            fetch('/api/perfil')
+        function textoSeguro(elemento, texto) {
+            elemento.textContent = texto;
+        }
+
+        function cargarPerfilAdmin() {
+            fetch('/api/admin/perfil')
                 .then(res => res.json())
                 .then(data => {
+                    document.getElementById('nombre_publico').value = data.nombre_publico || '';
+                    document.getElementById('descripcion').value = data.descripcion || '';
+
+                    const enlacePublico = document.getElementById('enlace-publico');
+                    enlacePublico.href = '/u/' + data.slug;
+                    enlacePublico.textContent = window.location.origin + '/u/' + data.slug;
+
                     const img = document.getElementById('vista-previa');
                     const txt = document.getElementById('sin-foto');
                     const btnEliminar = document.getElementById('form-eliminar-foto');
-                    if (data.existe) {
-                        img.src = data.url + '?t=' + new Date().getTime(); // Rompe la caché para que cambie al instante
+                    if (data.foto && data.foto.existe) {
+                        img.src = data.foto.url + '?t=' + new Date().getTime();
                         img.style.display = 'block';
                         txt.style.display = 'none';
                         btnEliminar.style.display = 'block';
@@ -99,7 +151,7 @@
         }
 
         function cargarEnlaces() {
-            fetch('/api/enlaces')
+            fetch('/api/admin/enlaces')
                 .then(res => res.json())
                 .then(enlaces => {
                     listaEnlacesMemoria = enlaces;
@@ -110,28 +162,58 @@
         function renderizarLista() {
             const lista = document.getElementById('lista-enlaces');
             lista.innerHTML = '';
-            if(listaEnlacesMemoria.length === 0) {
+            if (listaEnlacesMemoria.length === 0) {
                 lista.innerHTML = '<p style="text-align:center; color: #666; font-size: 14px;">No hay enlaces activos.</p>';
                 return;
             }
+
             listaEnlacesMemoria.forEach((enlace, index) => {
                 const item = document.createElement('div');
+                const izquierda = document.createElement('div');
+                const controles = document.createElement('div');
+                const subir = document.createElement('button');
+                const bajar = document.createElement('button');
+                const info = document.createElement('div');
+                const derecha = document.createElement('div');
+                const form = document.createElement('form');
+                const inputId = document.createElement('input');
+                const borrar = document.createElement('button');
+
                 item.className = 'enlace-item';
-                item.innerHTML = `
-                    <div class="izquierda-item">
-                        <div class="controles-orden">
-                            <button class="btn-orden" onclick="moverEnlace(${index}, -1)">🔼</button>
-                            <button class="btn-orden" onclick="moverEnlace(${index}, 1)">🔽</button>
-                        </div>
-                        <div class="enlace-info">${enlace.titulo}</div>
-                    </div>
-                    <div class="derecha-item">
-                        <form action="/api/eliminar-enlace" method="POST" style="margin:0;">
-                            <input type="hidden" name="id" value="${enlace.id}">
-                            <button type="submit" class="btn-borrar">Eliminar 🗑️</button>
-                        </form>
-                    </div>
-                `;
+                izquierda.className = 'izquierda-item';
+                controles.className = 'controles-orden';
+                subir.className = 'btn-orden';
+                bajar.className = 'btn-orden';
+                info.className = 'enlace-info';
+                derecha.className = 'derecha-item';
+
+                subir.type = 'button';
+                bajar.type = 'button';
+                subir.textContent = 'Subir';
+                bajar.textContent = 'Bajar';
+                subir.onclick = () => moverEnlace(index, -1);
+                bajar.onclick = () => moverEnlace(index, 1);
+                textoSeguro(info, enlace.titulo);
+
+                form.action = '/api/eliminar-enlace';
+                form.method = 'POST';
+                form.style.margin = '0';
+                inputId.type = 'hidden';
+                inputId.name = 'id';
+                inputId.value = enlace.id;
+                borrar.type = 'submit';
+                borrar.className = 'btn-borrar';
+                borrar.textContent = 'Eliminar';
+
+                controles.appendChild(subir);
+                controles.appendChild(bajar);
+                izquierda.appendChild(controles);
+                izquierda.appendChild(info);
+                form.appendChild(inputId);
+                form.appendChild(borrar);
+                derecha.appendChild(form);
+                item.appendChild(izquierda);
+                item.appendChild(derecha);
                 lista.appendChild(item);
             });
         }
@@ -143,6 +225,7 @@
             listaEnlacesMemoria[index] = listaEnlacesMemoria[nuevoIndex];
             listaEnlacesMemoria[nuevoIndex] = temp;
             renderizarLista();
+
             const posicionesEnvio = {};
             listaEnlacesMemoria.forEach((enlace, i) => { posicionesEnvio[enlace.id] = i; });
             fetch('/api/ordenar-enlaces', {
@@ -152,7 +235,7 @@
             });
         }
 
-        comprobarPerfil();
+        cargarPerfilAdmin();
         cargarEnlaces();
     </script>
 </body>
