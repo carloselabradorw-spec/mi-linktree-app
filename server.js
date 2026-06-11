@@ -111,7 +111,16 @@ async function inicializarBaseDatos() {
 
 async function asegurarUsuarioPrincipal() {
     const usuarioActual = await pool.query('SELECT * FROM usuarios WHERE username = $1', [DEFAULT_ADMIN_USER]);
-    if (usuarioActual.rows[0]) return usuarioActual.rows[0];
+    if (usuarioActual.rows[0]) {
+        await pool.query(
+            `UPDATE usuarios
+             SET nombre_publico = COALESCE(NULLIF(nombre_publico, ''), $1),
+                 descripcion = COALESCE(NULLIF(descripcion, ''), $2)
+             WHERE id = $3`,
+            [DEFAULT_PUBLIC_NAME, DEFAULT_PUBLIC_DESCRIPTION, usuarioActual.rows[0].id]
+        );
+        return usuarioActual.rows[0];
+    }
 
     const passwordHash = crearHashPassword(DEFAULT_ADMIN_PASSWORD);
     const nuevoUsuario = await pool.query(
@@ -173,12 +182,19 @@ const upload = multer({
 });
 
 async function obtenerUsuarioPublico(slugSolicitado) {
+    const pidioSlugConcreto = Boolean(slugSolicitado);
     const slug = limpiarSlug(slugSolicitado || DEFAULT_SLUG);
     const resultado = await pool.query(
         'SELECT id, slug, nombre_publico, descripcion FROM usuarios WHERE slug = $1',
         [slug]
     );
-    return resultado.rows[0];
+    if (resultado.rows[0]) return resultado.rows[0];
+    if (pidioSlugConcreto) return null;
+
+    const primerUsuario = await pool.query(
+        'SELECT id, slug, nombre_publico, descripcion FROM usuarios ORDER BY id ASC LIMIT 1'
+    );
+    return primerUsuario.rows[0] || null;
 }
 
 function obtenerFotoPerfil(slug) {
