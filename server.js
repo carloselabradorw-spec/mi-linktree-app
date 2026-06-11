@@ -15,8 +15,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
@@ -25,6 +26,10 @@ const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CarlosNFC2026';
 const DEFAULT_PUBLIC_NAME = process.env.DEFAULT_PUBLIC_NAME || 'Carlos Labrador';
 const DEFAULT_PUBLIC_DESCRIPTION = process.env.DEFAULT_PUBLIC_DESCRIPTION || 'Bienvenidos a mi espacio digital. Conecta conmigo a traves de mis redes.';
 const DEFAULT_SLUG = limpiarSlug(process.env.DEFAULT_SLUG || DEFAULT_ADMIN_USER);
+
+function asyncHandler(fn) {
+    return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+}
 
 function cargarEnvLocal() {
     const envPath = path.join(__dirname, '.env');
@@ -66,6 +71,11 @@ function comprobarPassword(password, passwordHash) {
 
 async function inicializarBaseDatos() {
     try {
+        if (!DATABASE_URL) {
+            console.error('Falta configurar DATABASE_URL en Render.');
+            return;
+        }
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS usuarios (
                 id SERIAL PRIMARY KEY,
@@ -118,6 +128,7 @@ inicializarBaseDatos();
 const seguridadAdmin = basicAuth({
     authorizer: async (username, password, cb) => {
         try {
+            if (!DATABASE_URL) return cb(null, false);
             const resultado = await pool.query('SELECT * FROM usuarios WHERE username = $1', [username]);
             const usuario = resultado.rows[0];
             cb(null, Boolean(usuario && comprobarPassword(password, usuario.password_hash)));
@@ -132,6 +143,7 @@ const seguridadAdmin = basicAuth({
 
 async function cargarUsuarioAdmin(req, res, next) {
     try {
+        if (!DATABASE_URL) return res.status(500).send('Falta configurar DATABASE_URL en Render');
         const resultado = await pool.query('SELECT * FROM usuarios WHERE username = $1', [req.auth.user]);
         if (!resultado.rows[0]) return res.status(401).send('Usuario no encontrado');
         req.usuario = resultado.rows[0];
@@ -189,15 +201,15 @@ app.get('/api/admin/perfil', seguridadAdmin, cargarUsuarioAdmin, (req, res) => {
     });
 });
 
-app.get('/api/admin/enlaces', seguridadAdmin, cargarUsuarioAdmin, async (req, res) => {
+app.get('/api/admin/enlaces', seguridadAdmin, cargarUsuarioAdmin, asyncHandler(async (req, res) => {
     const resBD = await pool.query(
         'SELECT id, titulo, url, posicion FROM enlaces WHERE usuario_id = $1 ORDER BY posicion ASC, id ASC',
         [req.usuario.id]
     );
     res.json(resBD.rows);
-});
+}));
 
-app.post('/api/admin/perfil', seguridadAdmin, cargarUsuarioAdmin, async (req, res) => {
+app.post('/api/admin/perfil', seguridadAdmin, cargarUsuarioAdmin, asyncHandler(async (req, res) => {
     const nombre = String(req.body.nombre_publico || '').trim();
     const descripcion = String(req.body.descripcion || '').trim();
     if (!nombre) return res.redirect('/admin');
@@ -207,9 +219,9 @@ app.post('/api/admin/perfil', seguridadAdmin, cargarUsuarioAdmin, async (req, re
         [nombre, descripcion, req.usuario.id]
     );
     res.redirect('/admin');
-});
+}));
 
-app.post('/api/admin/usuarios', seguridadAdmin, cargarUsuarioAdmin, async (req, res) => {
+app.post('/api/admin/usuarios', seguridadAdmin, cargarUsuarioAdmin, asyncHandler(async (req, res) => {
     const username = limpiarSlug(req.body.username);
     const password = String(req.body.password || '').trim();
     const slug = limpiarSlug(req.body.slug || username);
@@ -229,9 +241,10 @@ app.post('/api/admin/usuarios', seguridadAdmin, cargarUsuarioAdmin, async (req, 
         console.error('No se pudo crear el usuario:', e.message);
         res.redirect('/admin?usuario=duplicado');
     }
-});
+}));
 
-app.get('/api/enlaces', async (req, res) => {
+app.get('/api/enlaces', asyncHandler(async (req, res) => {
+    if (!DATABASE_URL) return res.status(500).json({ error: 'Falta configurar DATABASE_URL en Render' });
     const usuario = await obtenerUsuarioPublico(req.query.usuario || DEFAULT_SLUG);
     if (!usuario) return res.status(404).json([]);
 
@@ -240,9 +253,10 @@ app.get('/api/enlaces', async (req, res) => {
         [usuario.id]
     );
     res.json(resBD.rows);
-});
+}));
 
-app.get('/api/perfil', async (req, res) => {
+app.get('/api/perfil', asyncHandler(async (req, res) => {
+    if (!DATABASE_URL) return res.status(500).json({ error: 'Falta configurar DATABASE_URL en Render' });
     const usuario = await obtenerUsuarioPublico(req.query.usuario || DEFAULT_SLUG);
     if (!usuario) return res.status(404).json({ existe: false });
 
@@ -250,9 +264,9 @@ app.get('/api/perfil', async (req, res) => {
         ...usuario,
         foto: obtenerFotoPerfil(usuario.slug)
     });
-});
+}));
 
-app.post('/api/enlaces', seguridadAdmin, cargarUsuarioAdmin, async (req, res) => {
+app.post('/api/enlaces', seguridadAdmin, cargarUsuarioAdmin, asyncHandler(async (req, res) => {
     const titulo = String(req.body.titulo || '').trim();
     const url = String(req.body.url || '').trim();
     const posicion = Number.parseInt(req.body.posicion, 10) || 0;
@@ -263,9 +277,9 @@ app.post('/api/enlaces', seguridadAdmin, cargarUsuarioAdmin, async (req, res) =>
         [req.usuario.id, titulo, url, posicion]
     );
     res.redirect('/admin');
-});
+}));
 
-app.post('/api/ordenar-enlaces', seguridadAdmin, cargarUsuarioAdmin, async (req, res) => {
+app.post('/api/ordenar-enlaces', seguridadAdmin, cargarUsuarioAdmin, asyncHandler(async (req, res) => {
     const posiciones = req.body.posiciones || {};
     for (const [id, pos] of Object.entries(posiciones)) {
         await pool.query(
@@ -274,12 +288,12 @@ app.post('/api/ordenar-enlaces', seguridadAdmin, cargarUsuarioAdmin, async (req,
         );
     }
     res.json({ success: true });
-});
+}));
 
-app.post('/api/eliminar-enlace', seguridadAdmin, cargarUsuarioAdmin, async (req, res) => {
+app.post('/api/eliminar-enlace', seguridadAdmin, cargarUsuarioAdmin, asyncHandler(async (req, res) => {
     await pool.query('DELETE FROM enlaces WHERE id = $1 AND usuario_id = $2', [req.body.id, req.usuario.id]);
     res.redirect('/admin');
-});
+}));
 
 app.post('/api/perfil/subir', seguridadAdmin, cargarUsuarioAdmin, upload.single('imagenPerfil'), (req, res) => {
     res.redirect('/admin');
@@ -301,6 +315,12 @@ app.get('/u/:slug', (req, res) => {
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.use((err, req, res, next) => {
+    console.error('Error en la aplicacion:', err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 app.listen(PORT, () => {
