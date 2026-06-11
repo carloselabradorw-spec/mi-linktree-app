@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enlaces</title>
+    <title>Carlos Labrador - Enlaces</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #f5f6f8; color: #111; text-align: center; }
         .avatar-container { min-height: 128px; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; }
@@ -19,61 +19,31 @@
 </head>
 <body>
 
-    <div class="avatar-container" id="contenedor-foto"></div>
-    <h1 id="nombre-publico">Cargando...</h1>
-    <p id="descripcion-publica"></p>
+    <div class="avatar-container" id="contenedor-foto">
+        <div class="avatar-placeholder">C</div>
+    </div>
+
+    <h1>Carlos Labrador</h1>
+    <p>Bienvenidos a mi espacio digital. Conecta conmigo a traves de mis redes.</p>
+
     <div id="enlaces-cliente" class="lista-botones"></div>
 
     <script>
-        function obtenerSlugActual() {
-            const partes = window.location.pathname.split('/').filter(Boolean);
-            if (partes[0] === 'u' && partes[1]) return partes[1];
-            return '';
-        }
-
-        function ponerPlaceholder(nombre) {
-            const inicial = (nombre || '?').trim().charAt(0).toUpperCase() || '?';
-            const contenedor = document.getElementById('contenedor-foto');
-            contenedor.innerHTML = '';
-            const div = document.createElement('div');
-            div.className = 'avatar-placeholder';
-            div.textContent = inicial;
-            contenedor.appendChild(div);
-        }
-
-        const slug = obtenerSlugActual();
-        const parametroUsuario = slug ? '?usuario=' + encodeURIComponent(slug) : '';
-
-        fetch('/api/perfil' + parametroUsuario)
-            .then(res => {
-                if (!res.ok) throw new Error('Perfil no encontrado');
-                return res.json();
-            })
+        fetch('/api/perfil')
+            .then(res => res.json())
             .then(data => {
-                const nombre = data.nombre_publico || 'Enlaces';
-                document.title = nombre + ' - Enlaces';
-                document.getElementById('nombre-publico').textContent = nombre;
-                document.getElementById('descripcion-publica').textContent = data.descripcion || '';
-
+                if (!data.existe) return;
                 const contenedor = document.getElementById('contenedor-foto');
-                if (data.foto && data.foto.existe) {
-                    const img = document.createElement('img');
-                    img.src = data.foto.url + '?t=' + new Date().getTime();
-                    img.alt = nombre;
-                    img.className = 'avatar';
-                    contenedor.innerHTML = '';
-                    contenedor.appendChild(img);
-                } else {
-                    ponerPlaceholder(nombre);
-                }
+                const img = document.createElement('img');
+                img.src = data.url + '?t=' + new Date().getTime();
+                img.alt = 'Carlos Labrador';
+                img.className = 'avatar';
+                contenedor.innerHTML = '';
+                contenedor.appendChild(img);
             })
-            .catch(() => {
-                document.getElementById('nombre-publico').textContent = 'Perfil no encontrado';
-                document.getElementById('descripcion-publica').textContent = '';
-                ponerPlaceholder('?');
-            });
+            .catch(err => console.error('Error al cargar foto:', err));
 
-        fetch('/api/enlaces' + parametroUsuario)
+        fetch('/api/enlaces')
             .then(res => res.json())
             .then(enlaces => {
                 const lista = document.getElementById('enlaces-cliente');
@@ -97,10 +67,7 @@
                     lista.appendChild(a);
                 });
             })
-            .catch(() => {
-                const lista = document.getElementById('enlaces-cliente');
-                lista.innerHTML = '<div class="mensaje">No se pudieron cargar los enlaces.</div>';
-            });
+            .catch(err => console.error('Error al cargar enlaces:', err));
     </script>
 </body>
 </html>
