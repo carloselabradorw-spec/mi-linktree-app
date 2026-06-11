@@ -3,63 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carlos Labrador - Enlaces</title>
+    <title>Enlaces</title>
     <style>
-        /* Estilos generales para que la tarjeta se vea moderna */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #f5f6f8; color: #111; text-align: center; }
-        
-        /* Contenedor de la foto de perfil */
-        .avatar-container { margin-bottom: 20px; display: flex; justify-content: center; }
+        .avatar-container { min-height: 128px; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; }
         .avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        
+        .avatar-placeholder { width: 120px; height: 120px; border-radius: 50%; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 700; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 30px; font-size: 15px; }
-        
+        p { color: #666; margin-bottom: 30px; font-size: 15px; line-height: 1.5; }
         .lista-botones { display: flex; flex-direction: column; gap: 16px; }
-        
-        .boton-link { display: block; background: #fff; color: #111; padding: 18px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; border: 1px solid #eaeaea; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s, background 0.2s; }
+        .boton-link { display: block; background: #fff; color: #111; padding: 18px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; border: 1px solid #eaeaea; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s, background 0.2s; word-break: break-word; }
         .boton-link:hover { transform: scale(1.02); background: #fdfdfd; }
+        .mensaje { color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
 
     <div class="avatar-container" id="contenedor-foto"></div>
-
-    <h1>Carlos Labrador</h1>
-    <p>Bienvenidos a mi espacio digital. Conecta conmigo a través de mis redes.</p>
-
+    <h1 id="nombre-publico">Cargando...</h1>
+    <p id="descripcion-publica"></p>
     <div id="enlaces-cliente" class="lista-botones"></div>
 
     <script>
-        // 1. Cargar imagen de perfil con "truco de caché" para que se actualice al instante
-        fetch('/api/perfil')
-            .then(res => res.json())
+        function obtenerSlugActual() {
+            const partes = window.location.pathname.split('/').filter(Boolean);
+            if (partes[0] === 'u' && partes[1]) return partes[1];
+            return '';
+        }
+
+        function ponerPlaceholder(nombre) {
+            const inicial = (nombre || '?').trim().charAt(0).toUpperCase() || '?';
+            const contenedor = document.getElementById('contenedor-foto');
+            contenedor.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'avatar-placeholder';
+            div.textContent = inicial;
+            contenedor.appendChild(div);
+        }
+
+        const slug = obtenerSlugActual();
+        const parametroUsuario = slug ? '?usuario=' + encodeURIComponent(slug) : '';
+
+        fetch('/api/perfil' + parametroUsuario)
+            .then(res => {
+                if (!res.ok) throw new Error('Perfil no encontrado');
+                return res.json();
+            })
             .then(data => {
+                const nombre = data.nombre_publico || 'Enlaces';
+                document.title = nombre + ' - Enlaces';
+                document.getElementById('nombre-publico').textContent = nombre;
+                document.getElementById('descripcion-publica').textContent = data.descripcion || '';
+
                 const contenedor = document.getElementById('contenedor-foto');
-                if (data.existe) {
-                    // El ?t=${Date.now()} es la clave para que el navegador no use la foto vieja
-                    contenedor.innerHTML = `<img src="${data.url}?t=${new Date().getTime()}" alt="Perfil" class="avatar">`;
+                if (data.foto && data.foto.existe) {
+                    const img = document.createElement('img');
+                    img.src = data.foto.url + '?t=' + new Date().getTime();
+                    img.alt = nombre;
+                    img.className = 'avatar';
+                    contenedor.innerHTML = '';
+                    contenedor.appendChild(img);
+                } else {
+                    ponerPlaceholder(nombre);
                 }
             })
-            .catch(err => console.error("Error al cargar foto:", err));
+            .catch(() => {
+                document.getElementById('nombre-publico').textContent = 'Perfil no encontrado';
+                document.getElementById('descripcion-publica').textContent = '';
+                ponerPlaceholder('?');
+            });
 
-        // 2. Cargar lista de botones desde la base de datos
-        fetch('/api/enlaces')
+        fetch('/api/enlaces' + parametroUsuario)
             .then(res => res.json())
             .then(enlaces => {
                 const lista = document.getElementById('enlaces-cliente');
                 lista.innerHTML = '';
-                
+
+                if (!enlaces.length) {
+                    const mensaje = document.createElement('div');
+                    mensaje.className = 'mensaje';
+                    mensaje.textContent = 'Aun no hay enlaces publicados.';
+                    lista.appendChild(mensaje);
+                    return;
+                }
+
                 enlaces.forEach(enlace => {
                     const a = document.createElement('a');
                     a.href = enlace.url;
                     a.className = 'boton-link';
-                    a.innerText = enlace.titulo;
-                    a.target = "_blank";
+                    a.textContent = enlace.titulo;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
                     lista.appendChild(a);
                 });
             })
-            .catch(err => console.error("Error al cargar enlaces:", err));
+            .catch(() => {
+                const lista = document.getElementById('enlaces-cliente');
+                lista.innerHTML = '<div class="mensaje">No se pudieron cargar los enlaces.</div>';
+            });
     </script>
 </body>
 </html>
